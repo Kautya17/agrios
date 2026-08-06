@@ -1,0 +1,101 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  OWNER
+  ENGINEER
+  INVESTOR
+  ADMIN
+}
+
+enum ListingStatus {
+  PENDING
+  ENGINEER_ASSIGNED
+  APPROVED
+  REJECTED
+}
+
+enum InterestStatus {
+  SUBMITTED
+  CONTACTED
+  AGREED
+  CLOSED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  phone     String?
+  role      Role
+  createdAt DateTime @default(now())
+
+  landListings LandListing[]      @relation("OwnerListings")
+  inspections  InspectionReport[] @relation("EngineerInspections")
+  interests    InvestorInterest[] @relation("InvestorInterests")
+}
+
+model LandListing {
+  id              String        @id @default(cuid())
+  ownerId         String
+  owner           User          @relation("OwnerListings", fields: [ownerId], references: [id])
+  location        String
+  latitude        Float?
+  longitude       Float?
+  areaAcres       Float
+  waterSource     String?
+  roadAccess      Boolean       @default(false)
+  currentCrop     String?
+  expectedRevenue Float?
+  status          ListingStatus @default(PENDING)
+  createdAt       DateTime      @default(now())
+
+  images      LandImage[]
+  inspections InspectionReport[]
+  interests   InvestorInterest[]
+}
+
+model LandImage {
+  id        String      @id @default(cuid())
+  listingId String
+  listing   LandListing @relation(fields: [listingId], references: [id])
+  url       String
+  createdAt DateTime    @default(now())
+}
+
+model InspectionReport {
+  id              String      @id @default(cuid())
+  listingId       String
+  listing         LandListing @relation(fields: [listingId], references: [id])
+  engineerId      String
+  engineer        User        @relation("EngineerInspections", fields: [engineerId], references: [id])
+  landScore       Int?
+  waterNotes      String?
+  soilNotes       String?
+  cropSuitability String?
+  createdAt       DateTime    @default(now())
+}
+
+model InvestorInterest {
+  id         String         @id @default(cuid())
+  listingId  String
+  listing    LandListing    @relation(fields: [listingId], references: [id])
+  investorId String
+  investor   User           @relation("InvestorInterests", fields: [investorId], references: [id])
+  budget     Float?
+  message    String?
+  status     InterestStatus @default(SUBMITTED)
+  createdAt  DateTime       @default(now())
+}
