@@ -1,23 +1,16 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-export function proxy(req: NextRequest) {
-  const basicAuth = req.headers.get("authorization");
+const isPublicRoute = createRouteMatcher(["/", "/sign-in(.*)", "/sign-up(.*)"]);
 
-  if (basicAuth) {
-    const authValue = basicAuth.split(" ")[1];
-    const [user, pwd] = atob(authValue).split(":");
-    if (user === process.env.ADMIN_USER && pwd === process.env.ADMIN_PASSWORD) {
-      return NextResponse.next();
-    }
+export default clerkMiddleware(async (auth, req) => {
+  if (!isPublicRoute(req)) {
+    await auth.protect();
   }
-
-  return new NextResponse("Authentication required", {
-    status: 401,
-    headers: { "WWW-Authenticate": 'Basic realm="Admin Area"' },
-  });
-}
+});
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: [
+    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico)).*)",
+    "/(api|trpc)(.*)",
+  ],
 };

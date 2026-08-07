@@ -22,80 +22,109 @@ enum Role {
 
 enum ListingStatus {
   PENDING
-  ENGINEER_ASSIGNED
+  SITE_VISIT_SCHEDULED
+  UNDER_REVIEW
   APPROVED
   REJECTED
 }
 
-enum InterestStatus {
-  SUBMITTED
-  CONTACTED
-  AGREED
-  CLOSED
+enum DocumentType {
+  LAND_PHOTO
+  WATER_SOURCE_PHOTO
+  SEVEN_TWELVE_EXTRACT
+  OTHER
+}
+
+enum InvestmentStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
 }
 
 model User {
   id        String   @id @default(cuid())
+  clerkId   String   @unique
   email     String   @unique
   name      String?
   phone     String?
-  role      Role
+  roles     Role[]   @default([])
   createdAt DateTime @default(now())
 
-  landListings LandListing[]      @relation("OwnerListings")
-  inspections  InspectionReport[] @relation("EngineerInspections")
-  interests    InvestorInterest[] @relation("InvestorInterests")
+  landListings LandListing[] @relation("OwnerListings")
+  siteVisits   SiteVisit[]   @relation("EngineerVisits")
+  investments  Investment[]  @relation("InvestorInvestments")
 }
 
 model LandListing {
-  id              String        @id @default(cuid())
-  ownerId         String
-  owner           User          @relation("OwnerListings", fields: [ownerId], references: [id])
-  location        String
-  latitude        Float?
-  longitude       Float?
-  areaAcres       Float
-  waterSource     String?
-  roadAccess      Boolean       @default(false)
-  currentCrop     String?
-  expectedRevenue Float?
-  status          ListingStatus @default(PENDING)
-  createdAt       DateTime      @default(now())
+  id          String        @id @default(cuid())
+  ownerId     String
+  owner       User          @relation("OwnerListings", fields: [ownerId], references: [id])
+  location    String
+  latitude    Float?
+  longitude   Float?
+  areaAcres   Float
+  waterSource String?
+  status      ListingStatus @default(PENDING)
+  createdAt   DateTime      @default(now())
 
-  images      LandImage[]
-  inspections InspectionReport[]
-  interests   InvestorInterest[]
+  documents LandDocument[]
+  siteVisit SiteVisit?
+  cropPlan  CropPlan?
+  updates   ProjectUpdate[]
 }
 
-model LandImage {
+model LandDocument {
+  id        String       @id @default(cuid())
+  listingId String
+  listing   LandListing  @relation(fields: [listingId], references: [id])
+  type      DocumentType
+  url       String
+  createdAt DateTime     @default(now())
+}
+
+model SiteVisit {
+  id          String      @id @default(cuid())
+  listingId   String      @unique
+  listing     LandListing @relation(fields: [listingId], references: [id])
+  engineerId  String
+  engineer    User        @relation("EngineerVisits", fields: [engineerId], references: [id])
+  scheduledAt DateTime?
+  notes       String?
+  createdAt   DateTime    @default(now())
+}
+
+model CropPlan {
+  id                   String      @id @default(cuid())
+  listingId            String      @unique
+  listing              LandListing @relation(fields: [listingId], references: [id])
+  cropName             String
+  durationMonths       Int
+  investmentRequired   Float
+  ownerFixedPayout     Float
+  investorReturnMinPct Float
+  investorReturnMaxPct Float
+  marketProjection     String
+  productionProjection String
+  riskPercent          Float
+  createdAt            DateTime    @default(now())
+}
+
+model Investment {
+  id         String           @id @default(cuid())
+  listingId  String
+  investorId String
+  investor   User             @relation("InvestorInvestments", fields: [investorId], references: [id])
+  amount     Float
+  status     InvestmentStatus @default(ACTIVE)
+  createdAt  DateTime         @default(now())
+}
+
+model ProjectUpdate {
   id        String      @id @default(cuid())
   listingId String
   listing   LandListing @relation(fields: [listingId], references: [id])
-  url       String
+  title     String
+  note      String?
+  photoUrl  String?
   createdAt DateTime    @default(now())
-}
-
-model InspectionReport {
-  id              String      @id @default(cuid())
-  listingId       String
-  listing         LandListing @relation(fields: [listingId], references: [id])
-  engineerId      String
-  engineer        User        @relation("EngineerInspections", fields: [engineerId], references: [id])
-  landScore       Int?
-  waterNotes      String?
-  soilNotes       String?
-  cropSuitability String?
-  createdAt       DateTime    @default(now())
-}
-
-model InvestorInterest {
-  id         String         @id @default(cuid())
-  listingId  String
-  listing    LandListing    @relation(fields: [listingId], references: [id])
-  investorId String
-  investor   User           @relation("InvestorInterests", fields: [investorId], references: [id])
-  budget     Float?
-  message    String?
-  status     InterestStatus @default(SUBMITTED)
-  createdAt  DateTime       @default(now())
 }
